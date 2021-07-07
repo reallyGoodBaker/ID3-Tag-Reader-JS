@@ -70,7 +70,7 @@ const {
 
 ```js
 Picture = {
-    __mime: number,  //解析过程中的实际mime类型
+    __mime: number,  //解析过程中的实际mime类型  0/1/2 -> jpeg/gif/png
     mime: string,  //标注的mime类型
     blob: string,  //base64字符串
     getImage: function,  //返回一个src属性已经赋值的<img>元素

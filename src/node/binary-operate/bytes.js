@@ -224,4 +224,4 @@ class BytesStream extends Array {
 
 }
 
-export {Byte, Bytes, BytesStream, symBE, symLE};
+module.exports = {Byte, Bytes, BytesStream, symBE, symLE};

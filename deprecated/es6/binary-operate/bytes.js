@@ -1,9 +1,21 @@
 const [symLE, symBE] = [Symbol('LE'), Symbol('BE')];
 
 class Byte {
+
+      static {
+            this.b1 = 1;
+            this.b2 = 2;
+            this.b3 = 4;
+            this.b4 = 8;
+            this.b5 = 16;
+            this.b6 = 32;
+            this.b7 = 64;
+            this.b8 = 128;
+      }
+
       /**
        * @private
-       * @type {Array<number>}
+       * @type {number}
        */
       byteData = null;
 
@@ -14,7 +26,7 @@ class Byte {
             this.byteData = Array.isArray(bit8data) && this.bitArrayConstructor(bit8data)
             || typeof bit8data === 'number' && this.int8Constructor(bit8data)
             || typeof bit8data === 'string' && this.asciiConstructor(bit8data);
-            if (!this.byteData) throw Error('Illegal param: ' + bit8data);
+            if (this.byteData === null || this.byteData === undefined) throw Error('Illegal param: ' + bit8data);
       }
 
       /**
@@ -22,20 +34,14 @@ class Byte {
        */
       bitArrayConstructor(bit8data){
             if (bit8data.length !== 8) return null;
-            bit8data.forEach(el => {
-                  if (el > 1 || el < 0) return null;
-            });
-            return bit8data;
+            return parseInt(bit8data.join(''), 2);
       }
 
       /**
        * @private
        */
       int8Constructor(bit8data){
-            let binstr = bit8data.toString(2);
-            let needToAdd = 8 - binstr.length;
-            for (let i = 0; i < needToAdd; i++) binstr = '0' + binstr;
-            return binstr.split('').reduce((pre, cur) => [...pre, parseInt(cur)], []);
+            return bit8data;
       }
 
       /**
@@ -46,20 +52,20 @@ class Byte {
       }
 
       toBinStr(){
-            return this.byteData.join('');
+            return this.byteData.toString(2);
       }
 
       toInt8Number(){
-            return parseInt(this.toBinStr(), 2);
+            return this.byteData;
       }
 
       toASCIIChar(){
-            return String.fromCharCode(this.toInt8Number());
+            return String.fromCharCode(this.byteData);
       }
 
       bitAt(index){
-            if (index < 0 || index > 8) return null;
-            return this.byteData[index];
+            let data = this.byteData;
+            return !!((data << index) & Byte.b8);
       }
 
 }
@@ -78,44 +84,60 @@ class Bytes extends Array {
        */
       toNumber(type=0, bit=8, signed=false){
             if (bit != 8 && bit != 16 && bit != 32 && bit != 64) return NaN;
-            let needToConvert = this.slice(0, bit/8).reduce((pre, cur) => pre = pre + cur.toBinStr(), '');
+            const size = bit/8;
+            
 
             //int
             if (!type) {
+
+                  let needToConvert = this.slice(0, size).reduce((pre, cur) => [...pre, cur.toInt8Number()], []);
+
                   //unsigned
-                  if (!signed) return parseInt(needToConvert, 2);
+                  if (!signed) {
+                        let res = 0;
+                        for(let i = size; i--;) {
+                              res <<= 8;
+                              res += needToConvert[i];
+                        }
+                        return res
+                  }
 
                   //signed
-                  let us = parseInt(needToConvert, 2);
-                  let mp = 2 ** (bit - 1);
+                  let us = 0;
+                  for(let i = size; i--;) {
+                        us <<= 8;
+                        us += needToConvert[i];
+                  }
+                  let mp = 1 << (bit - 1);
                   if (us <= mp) return us;
                   if (us > mp) return us - mp *2;
             }
 
             //float
-            if (bit < 32) return NaN;
-            return parseFloat(needToConvert);
+            // let needToConvert = this.slice(0, size);
+
+            // if (size < 4) return NaN;
+            // return parseFloat(needToConvert);
       }
 
       toIntNumber(bit=8,signed=false){
             return this.toNumber(0, bit, signed);
       }
 
-      toFloatNumber(bit=32,signed=false){
-            if (bit < 32) return NaN;
-            return this.toNumber(1, bit, signed);
-      }
+      // toFloatNumber(bit=32,signed=false){
+      //       if (bit < 32) return NaN;
+      //       return this.toNumber(1, bit, signed);
+      // }
 
       /**
        * @returns 
        */
       toUTF16Char(){
             if (this.length < 2) return '';
-            let binArr = this.slice(0, 2);
-            let binCode = binArr.reduce((pre, cur) => pre = pre + cur.toBinStr(), '');
-            if (binCode == '1111111011111111') return symLE;
-            if (binCode == '1111111111111110') return symBE;
-            return String.fromCharCode(parseInt(binCode,2));
+            let hexNum = this.toIntNumber(16, false);
+            if (hexNum == 0xEF) return symLE;
+            if (hexNum == 0xEF) return symBE;
+            return String.fromCharCode(hexNum);
       }
 
       UTF8length(){
@@ -123,43 +145,36 @@ class Bytes extends Array {
             //null
             if (!this[0]) return 0;
 
-            //ANSCII
-            if (this[0].byteData[0] === 0) return 1;
+            let counter = -1;
+            let byte = this[0];
 
-            //length > 1
-            let charByte = [this[0].byteData, this[1].byteData];
+            for(let i = 8; i--;) {
+                  if(byte.bitAt(i)) counter++;
+                  else break;
+            }
 
-            //length = 2
-            if (charByte[0].slice(0, 3).join('') === '110' && charByte[1].slice(0, 2).join('') === '10') return 2;
-
-            //length = 3
-            charByte.push(this[3]);
-            if (charByte[0].slice(0, 4).join('') === '1110' && charByte[1].slice(0, 3).join('') === '110' && charByte[2].slice(0, 3).join('') === '10') return 3;
-
-            //not a utf-8 char
-            return 0;
+            return counter;
 
       }
 
       toUTF8Char(){
             let len = this.UTF8length();
+            let dataSlice = ~(Byte.b8 & Byte.b7);
             if (!len) return Symbol('not utf-8');
 
-            //length = 1
-            if (len === 1) return this[0].toASCIIChar();
+            //ASCII
+            if (!~len) return this[0].toASCIIChar();
 
-            //length = 2
-            if (len === 2) return String.fromCharCode(parseInt([
-                  this[0].byteData.slice(3, 5), 
-                  this[1].byteData.slice(2, 6)
-            ].flat().join(''), 2));
-
-            //length = 3
-            return String.fromCharCode(parseInt([
-                  this[0].byteData.slice(4, 4), 
-                  this[1].byteData.slice(3, 5),
-                  this[2].byteData.slice(2, 6)
-            ].flat().join(''), 2));
+            //length > 1
+            let charCode = 0;
+            for(let i = 0; i<len; i++) {
+                  if (i === 0) {
+                        charCode += ((this[0].byteData << (len + 1)) & 255) << (7 * (len - 1) - 2); 
+                        continue;
+                  }
+                  charCode += (this[i].byteData & dataSlice) << 8 * (len - 1);
+            }
+            return String.fromCharCode(charCode);
       }
 
       reverse(){
@@ -190,11 +205,11 @@ class BytesStream extends Array {
       template(bitsLenArr, ...attrNames){
             if (bitsLenArr.length !== attrNames.length) throw Error('length of bitsArray should equals to the count of your attrNames'); 
             let obj = {};
-            for (let i = 0; i < attrNames.length; i++) {
-                  let count = bitsLenArr[i];
-                  let bytes = new Bytes();
-                  for (let i = 0; i < count; i++) {
-                        let data = this.shift();
+            for (let i = 0, count, bytes; i < attrNames.length; i++) {
+                  count = bitsLenArr[i];
+                  bytes = new Bytes();
+                  for (let i = 0, data; i < count; i++) {
+                        data = this.shift();
                         bytes.push(new Byte(data));
                   }
                   obj[attrNames[i]] = bytes;
@@ -212,8 +227,8 @@ class BytesStream extends Array {
             lengthAll = lengthAll || Math.floor(this.length/lengthEach);
             if(lengthEach > lengthAll) throw Error('Illegal param: '+lengthEach);
             let res = [];
-            for (let i = 0; i < lengthAll/lengthEach; i++) {
-                  let by = new Bytes();
+            for (let i = 0, by; i < lengthAll/lengthEach; i++) {
+                  by = new Bytes();
                   for (let i = 0; i < lengthEach; i++) {
                         by.push(new Byte(this.shift()));
                   }

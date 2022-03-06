@@ -84,14 +84,17 @@ const decoder = {
             return data.reduce((pre,cur) => pre + new Byte(cur).toASCIIChar(), '');
       },
       1: (data) => {
+            console.log('utf16 le');
             let utf16buffer = new UTF16Buffer(...data.reduce((pre,cur) => [...pre, new Byte(cur)], []));
             return utf16buffer.getUTF16String('LE');
       },
       2: (data) => {
+            console.log('utf16 be');
             let utf16buffer = new UTF16Buffer(...data.reduce((pre,cur) => [...pre, new Byte(cur)], []));
-            return utf16buffer.getUTF16String('RE');
+            return utf16buffer.getUTF16String('BE');
       },
       3: (data) => {
+            console.log('utf8');
             let utf8buffer = new UTF8Buffer(...data.reduce((pre,cur) => [...pre, new Byte(cur)], []));
             return utf8buffer.getUTF8String();
       },
@@ -168,14 +171,14 @@ const parsers = {
  * @returns 
  */
 const createFrameContent = (header, stream) => {
-      let __encoding = new Byte(stream.splice(0, 1)[0]).toInt8Number(),
+      let __encoding = +new Byte(stream.splice(0, 1)[0]).toInt8Number(),
       encoding = __encoding == 0 ? 'ISO-8859-1' :
             __encoding == 1? 'UTF-16LE' :
                   __encoding == 2? 'UTF-16BE': 
                         __encoding == 3? 'UTF-8' : 'Unknown';
       
-      let buffer = stream.splice(0, header.size - 1),
-      content = contentParser(buffer, parsers[header.frameID] || decoder[__encoding], __encoding);
+      let buffer = stream.splice(0, header.size - 1);
+      const content = contentParser(buffer, parsers[header.frameID] || decoder[__encoding], __encoding);
 
       return {encoding, content, __encoding}
 }

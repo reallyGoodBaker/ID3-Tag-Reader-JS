@@ -1,5 +1,5 @@
 import {types as t, Struct} from './bytes.js'
-import {decode, utf16, utf8} from './string_decode.js'
+import {utf16, utf8} from './string_decode.js'
 
 let splicer = {
     index: 0,

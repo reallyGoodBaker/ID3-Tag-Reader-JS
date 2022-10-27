@@ -74,6 +74,11 @@ const decoders = [
 
 function createFrameContent(buffer) {
     const encoding = new DataView(buffer, 0, 1).getUint8(0);
+
+    if (encoding > 3) {
+        return null
+    }
+
     let data = decoders[encoding].decode(buffer.slice(1));
     
     return {encoding, data}
@@ -96,7 +101,6 @@ function createFrame() {
     if (header.id === 'USLT') {
         let _data = new Uint16Array(splicer.splice(header.size));
         let start = _data.indexOf(0);
-        console.log(utf16(_data.slice(start)));
         return {header, content: {data: utf16(_data.slice(start))}}
     }
 

@@ -90,13 +90,15 @@ function createFrame() {
 
     if(header.id === 'APIC') {
         if (typeof window !== 'undefined') {
-            let _data = new Uint8Array(splicer.splice(header.size));
-            let start = _data.indexOf(255);
-            let content = {data: URL.createObjectURL(new Blob([_data.slice(start)]))}
-            return {header, content};
+            let _data = new Uint8Array(splicer.splice(header.size))
+            let mimeEnd = _data.indexOf(0, 1)
+            let mimeType = _data.slice(0, mimeEnd)
+            _data = _data.slice(mimeEnd + 3)
+            let content = {data: URL.createObjectURL(new Blob([_data]))}
+            return {header, content, mimeType};
         }
         return {header, content: {data: splicer.splice(header.size)}};
-    } 
+    }
 
     if (header.id === 'USLT') {
         let _data = new Uint16Array(splicer.splice(header.size));

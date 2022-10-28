@@ -98,7 +98,7 @@ function createFrame() {
             return {header, content, mimeType};
         }
         return {header, content: {data: splicer.splice(header.size)}};
-    } 
+    }
 
     if (header.id === 'USLT') {
         let _data = new Uint16Array(splicer.splice(header.size));

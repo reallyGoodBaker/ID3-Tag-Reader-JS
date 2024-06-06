@@ -92,7 +92,7 @@ function createFrame() {
         if (typeof window !== 'undefined') {
             let _data = new Uint8Array(splicer.splice(header.size))
             let mimeEnd = _data.indexOf(0, 1)
-            let mimeType = _data.slice(0, mimeEnd)
+            let mimeType = utf8(_data.slice(0, mimeEnd))
             _data = _data.slice(mimeEnd + 3)
             let content = {data: URL.createObjectURL(new Blob([_data]))}
             return {header, content, mimeType};
